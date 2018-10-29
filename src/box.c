@@ -176,6 +176,17 @@ float box_union(box a, box b)
     return u;
 }
 
+/*
+ *  Intersection over prediction
+ */
+float box_iop(box pred, box truth)
+{
+    float pred_area = pred.w * pred.h;
+    if (pred_area == 0)
+        return 1.0;
+    return box_intersection(pred, truth) / pred_area;
+}
+
 float box_iou(box a, box b)
 {
     return box_intersection(a, b)/box_union(a, b);

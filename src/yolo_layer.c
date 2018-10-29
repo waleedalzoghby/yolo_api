@@ -164,18 +164,29 @@ void forward_yolo_layer(const layer l, network net)
                     box pred = get_yolo_box(l.output, l.biases, l.mask[n], box_index, i, j, l.w, l.h, net.w, net.h, l.w*l.h);
                     float best_iou = 0;
                     int best_t = 0;
-                    for(t = 0; t < l.max_boxes; ++t){
-                        box truth = float_to_box(net.truth + t*(4 + 1) + b*l.truths, 1);
-                        if(!truth.x) break;
-                        float iou = box_iou(pred, truth);
-                        if (iou > best_iou) {
-                            best_iou = iou;
-                            best_t = t;
-                        }
-                    }
+
                     int obj_index = entry_index(l, b, n*l.w*l.h + j*l.w + i, 4);
                     avg_anyobj += l.output[obj_index];
                     l.delta[obj_index] = 0 - l.output[obj_index];
+
+                    for(t = 0; t < l.max_boxes; ++t){
+                        box truth = float_to_box(net.truth + t*(4 + 1) + b*l.truths, 1);
+                        if(!truth.x) break;
+
+                        // calculate class label id
+                        int class = net.truth[t*(4 + 1) + b*l.truths + 4];
+                        if (class < 0 && box_iop(pred, truth) > 0.5) {
+                            // set delta to zero if the prediction overlaps with an ignored region
+                            l.delta[obj_index] = 0;
+                        } else {
+                            float iou = box_iou(pred, truth);
+                            if (iou > best_iou) {
+                                best_iou = iou;
+                                best_t = t;
+                            }
+                        }
+                    }
+
                     if (best_iou > l.ignore_thresh) {
                         l.delta[obj_index] = 0;
                     }
@@ -194,8 +205,12 @@ void forward_yolo_layer(const layer l, network net)
         }
         for(t = 0; t < l.max_boxes; ++t){
             box truth = float_to_box(net.truth + t*(4 + 1) + b*l.truths, 1);
-
             if(!truth.x) break;
+
+            // skip if truth is an ignored bbox
+            int class = net.truth[t*(4 + 1) + b*l.truths + 4];
+            if (class < 0) continue;
+
             float best_iou = 0;
             int best_n = 0;
             i = (truth.x * l.w);

@@ -8,6 +8,7 @@ typedef struct{
 
 float box_rmse(box a, box b);
 dbox diou(box a, box b);
+float box_iop(box pred, box truth);
 box decode_box(box b, box anchor);
 box encode_box(box b, box anchor);
 
