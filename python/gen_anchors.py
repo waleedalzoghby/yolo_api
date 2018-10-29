@@ -120,11 +120,6 @@ def main(argv):
         f2 = open(line)
         for line in f2.readlines():
             line = line.rstrip('\n')
-            cls_id = line.split(' ')[0]
-
-            cls_id = int(cls_id)
-            if cls_id!=0:
-                continue
             w,h = line.split(' ')[3:]
             #print w,h
             annotation_dims.append(map(float,(w,h)))
@@ -143,6 +138,7 @@ def main(argv):
         print 'Filelist = %s'%(args.filelist)
     else:
         anchor_file = join( args.output_dir,'anchors%d.txt'%(args.num_clusters))
+        print annotation_dims.shape[0]
         indices = [ random.randrange(annotation_dims.shape[0]) for i in range(args.num_clusters)]
         centroids = annotation_dims[indices]
         kmeans(annotation_dims,centroids,eps,anchor_file)

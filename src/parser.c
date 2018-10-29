@@ -1011,7 +1011,10 @@ void save_weights_upto(network *net, const char *filename, int cutoff)
     int i;
     for(i = 0; i < net->n && i < cutoff; ++i){
         layer l = net->layers[i];
-        if (l.dontsave) continue;
+        if (l.dontsave) {
+            printf("Not saving layer %d\n", i);
+            continue;
+        }
         if(l.type == CONVOLUTIONAL || l.type == DECONVOLUTIONAL){
             save_convolutional_weights(l, fp);
         } if(l.type == CONNECTED){
@@ -1229,7 +1232,10 @@ void load_weights_upto(network *net, const char *filename, int start, int cutoff
     int i;
     for(i = start; i < net->n && i < cutoff; ++i){
         layer l = net->layers[i];
-        if (l.dontload) continue;
+        if (l.dontload) {
+            printf("Not loading layer %d\n", i);
+            continue;
+        }
         if(l.type == CONVOLUTIONAL || l.type == DECONVOLUTIONAL){
             load_convolutional_weights(l, fp);
         }

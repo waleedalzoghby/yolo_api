@@ -4,7 +4,7 @@
 
 This is yet another fork of the darknet detection framework with some extra features including:
 
-* C++ interface (inference only)
+* C++ interface (detection inference only for yolov1, v2 and v3)
 
 For more general information on darknet see the [Darknet project website](http://pjreddie.com/darknet).
 See our [gitlab wiki](https://gitlab.com/EAVISE/darknet/wikis/home) for more information on how to train your own network.

@@ -194,6 +194,7 @@ static void print_cocos(FILE *fp, char *image_path, detection *dets, int num_box
 
         for(j = 0; j < classes; ++j){
             if (dets[i].prob[j]) fprintf(fp, "{\"image_id\":%d, \"category_id\":%d, \"bbox\":[%f, %f, %f, %f], \"score\":%f},\n", image_id, coco_ids[j], bx, by, bw, bh, dets[i].prob[j]);
+            //if (dets[i].prob[j]) fprintf(fp, "{\"image_id\":\"%s\", \"category_id\":%d, \"bbox\":[%f, %f, %f, %f], \"score\":%f},\n", image_path, coco_ids[j], bx, by, bw, bh, dets[i].prob[j]);
         }
     }
 }
@@ -397,6 +398,19 @@ void validate_detector_flip(const char *datacfg, const char *cfgfile, const char
     fprintf(stderr, "Total Detection Time: %f Seconds\n", what_time_is_it_now() - start);
 }
 
+int save_tensor_binary(float* data, size_t size, const char* filename)
+{
+    FILE* fp;
+
+    fp = fopen(filename, "wb");
+    if (!fp)
+        return -1;
+
+    size_t res = fwrite(data, sizeof(float), size, fp);
+
+    fclose(fp);
+    return 0;
+}
 
 void validate_detector(const char *datacfg, const char *cfgfile, const char *weightfile, char *outfile)
 {
@@ -725,6 +739,24 @@ void validate_detector_PRcurve(const char *datacfg, const char *cfgfile, const c
     }
 }
 
+int save_tensor(float* data, size_t size, const char* filename)
+{
+    FILE* fp;
+
+    fp = fopen(filename, "w");
+    if (!fp)
+        return -1;
+
+    size_t i;
+
+    for (i=0; i<size; i++) {
+        fprintf(fp, "%.8f\n", data[i]);
+    }
+
+    fclose(fp);
+    return 0;
+}
+
 void test_detector(const char *datacfg, const char *cfgfile, const char *weightfile, const char *filename, float thresh, float hier_thresh, char *outfile, int fullscreen)
 {
     list *options = read_data_cfg(datacfg);
@@ -757,11 +789,11 @@ void test_detector(const char *datacfg, const char *cfgfile, const char *weightf
         //resize_network(net, sized.w, sized.h);
         layer l = net->layers[net->n-1];
 
-
         float *X = sized.data;
         time=what_time_is_it_now();
         network_predict(net, X);
         printf("%s: Predicted in %f seconds.\n", input, what_time_is_it_now()-time);
+
         int nboxes = 0;
         detection *dets = get_network_boxes(net, im.w, im.h, thresh, hier_thresh, 0, 1, &nboxes);
         //printf("%d\n", nboxes);
