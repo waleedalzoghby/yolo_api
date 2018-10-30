@@ -68,6 +68,8 @@ void train_detector(const char *datacfg, const char *cfgfile, const char *weight
     pthread_t load_thread = load_data(args);
     double time;
     int count = 0;
+    int network_input_width = net->w;
+    int network_input_height = net->h;
     //while(i*imgs < N*120){
     while(get_current_batch(net) < net->max_batches){
         if(l.random && count++%10 == 0){
@@ -75,9 +77,12 @@ void train_detector(const char *datacfg, const char *cfgfile, const char *weight
             int dim = (rand() % 10 + 10) * 32;
             if (get_current_batch(net)+200 > net->max_batches) dim = 608;
             //int dim = (rand() % 4 + 16) * 32;
-            printf("%d\n", dim);
-            args.w = dim;
-            args.h = dim;
+            int dim_w = dim;
+            // preserve aspect ratio when rescaling with respect to a multiple of 32
+            int dim_h = round((dim * network_input_height) / (float)(network_input_width * 32)) * 32;
+            printf("%dx%d\n", dim_w, dim_h);
+            args.w = dim_w;
+            args.h = dim_h;
 
             pthread_join(load_thread, 0);
             train = buffer;
@@ -406,7 +411,7 @@ int save_tensor_binary(float* data, size_t size, const char* filename)
     if (!fp)
         return -1;
 
-    size_t res = fwrite(data, sizeof(float), size, fp);
+    (void)fwrite(data, sizeof(float), size, fp);
 
     fclose(fp);
     return 0;
