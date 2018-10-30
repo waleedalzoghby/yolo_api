@@ -315,6 +315,10 @@ layer parse_yolo(list *options, size_params params)
     l.jitter = option_find_float(options, "jitter", .2);
 
     l.ignore_thresh = option_find_float(options, "ignore_thresh", .5);
+
+    // ignore intersection over prediction threshold, used to determine whether
+    // a bbox prediction belongs to an ignore region or not
+    l.ignore_region_thresh = option_find_float(options, "ignore_region_thresh", .5);
     l.truth_thresh = option_find_float(options, "truth_thresh", 1);
     l.random = option_find_int_quiet(options, "random", 0);
 

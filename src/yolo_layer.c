@@ -39,7 +39,6 @@ layer make_yolo_layer(int batch, int w, int h, int n, int total, int *mask, int 
     l.outputs = h*w*n*(classes + 4 + 1);
     l.inputs = l.outputs;
     l.max_boxes = max_boxes;
-    printf(" l.max_boxes = %d \n", l.max_boxes);
     l.truths = l.max_boxes*(4 + 1);
     l.delta = calloc(batch*l.outputs, sizeof(float));
     l.output = calloc(batch*l.outputs, sizeof(float));
@@ -177,7 +176,7 @@ void forward_yolo_layer(const layer l, network net)
 
                         // calculate class label id
                         int class = net.truth[t*(4 + 1) + b*l.truths + 4];
-                        if (class < 0 && box_iop(pred, truth) > 0.5) {
+                        if (class < 0 && box_iop(pred, truth) > l.ignore_region_thresh) {
                             // set delta to zero if the prediction overlaps with an ignored region
                             l.delta[obj_index] = 0;
                         } else {
@@ -211,7 +210,8 @@ void forward_yolo_layer(const layer l, network net)
 
             // skip if truth is an ignored bbox
             int class = net.truth[t*(4 + 1) + b*l.truths + 4];
-            if (class < 0) continue;
+            if (class < 0)
+                continue;
 
             float best_iou = 0;
             int best_n = 0;
@@ -239,7 +239,6 @@ void forward_yolo_layer(const layer l, network net)
                 avg_obj += l.output[obj_index];
                 l.delta[obj_index] = 1 - l.output[obj_index];
 
-                int class = net.truth[t*(4 + 1) + b*l.truths + 4];
                 if (l.map) class = l.map[class];
                 int class_index = entry_index(l, b, mask_n*l.w*l.h + j*l.w + i, 4 + 1);
                 delta_yolo_class(l.output, l.delta, class_index, class, l.classes, l.w*l.h, &avg_cat);
