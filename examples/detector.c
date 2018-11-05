@@ -91,7 +91,7 @@ void train_detector(const char *datacfg, const char *cfgfile, const char *weight
 
             #pragma omp parallel for
             for(i = 0; i < ngpus; ++i){
-                resize_network(nets[i], dim, dim);
+                resize_network(nets[i], dim_w, dim_h);
             }
             net = nets[0];
         }
