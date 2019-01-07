@@ -16,6 +16,12 @@ void cuda_set_device(int n)
     check_error(status);
 }
 
+void cuda_reset_device()
+{
+    cudaError_t status = cudaDeviceReset();
+    check_error(status);
+}
+
 int cuda_get_device()
 {
     int n = 0;
@@ -62,17 +68,30 @@ dim3 cuda_gridsize(size_t n){
 }
 
 #ifdef CUDNN
+
+static int cu_init[16] = {0};
+static cudnnHandle_t cu_handle[16];
+
 cudnnHandle_t cudnn_handle()
 {
-    static int init[16] = {0};
-    static cudnnHandle_t handle[16];
     int i = cuda_get_device();
-    if(!init[i]) {
-        cudnnCreate(&handle[i]);
-        init[i] = 1;
+    if(!cu_init[i]) {
+        cudnnCreate(&cu_handle[i]);
+        cu_init[i] = 1;
     }
-    return handle[i];
+    return cu_handle[i];
 }
+
+void cudnn_free_handles()
+{
+    for (int i=0; i<(sizeof(cu_init)/sizeof(int)); i++) {
+        if (cu_init[i]) {
+            cudnnDestroy(cu_handle[i]);
+            cu_init[i] = 0;
+        }
+    }
+}
+
 #endif
 
 cublasHandle_t blas_handle()
@@ -174,5 +193,6 @@ float cuda_mag_array(float *x_gpu, size_t n)
 }
 #else
 void cuda_set_device(int n){}
+void cuda_reset_device(){}
 
 #endif

@@ -60,7 +60,7 @@ Detector::impl::impl() :
         m_dets(nullptr),
         m_nboxes(0),
         m_classes(0),
-        m_nms(0),
+         m_nms(0),
         m_threshold(0),
         m_hier_threshold(0),
         m_output_width(0),
@@ -73,10 +73,13 @@ Detector::impl::~impl()
 
 void Detector::impl::release()
 {
-    // TODO - Massive cleanup here
-
     m_bSetup = false;
 
+    if (m_net)
+        free_network(m_net);
+
+    if (m_dets)
+        free_detections(m_dets, m_nboxes);
 }
 
 bool Detector::impl::setup(std::string label_names_file,
@@ -126,7 +129,7 @@ bool Detector::impl::setup(std::string label_names_file,
 
     layer l = m_net->layers[m_net->n-1];
     m_classes = l.classes;
-    DPRINTF("Setup: layers = %d, %d, %d, classes = \n", l.w, l.h, l.n, m_classes);
+    DPRINTF("Setup: layers = %d, %d, %d, classes = %d\n", l.w, l.h, l.n, m_classes);
 
     if (m_output_width == 0 && m_output_height == 0) {
         DPRINTF("No detections output widht/height provided, using network dimensions\n");

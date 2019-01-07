@@ -14,6 +14,8 @@ namespace Darknet
 class ConvertCv
 {
 public:
+    virtual ~ConvertCv() {}
+
     /*
      *  Setup converter to work withfimages of in_width/in_height size
      *  in_width :      width of input images to convert

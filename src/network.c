@@ -716,6 +716,9 @@ float network_accuracy_multi(network *net, data d, int n)
 void free_network(network *net)
 {
     int i;
+#ifdef CUDNN
+    cudnn_free_handles();
+#endif
     for(i = 0; i < net->n; ++i){
         free_layer(net->layers[i]);
     }
@@ -725,6 +728,8 @@ void free_network(network *net)
 #ifdef GPU
     if(net->input_gpu) cuda_free(net->input_gpu);
     if(net->truth_gpu) cuda_free(net->truth_gpu);
+    if(net->workspace) cuda_free(net->workspace);
+    cuda_reset_device();
 #endif
     free(net);
 }
