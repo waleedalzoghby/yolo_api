@@ -75,11 +75,15 @@ void Detector::impl::release()
 {
     m_bSetup = false;
 
-    if (m_net)
+    if (m_net) {
         free_network(m_net);
+        m_net = nullptr;
+    }
 
-    if (m_dets)
+    if (m_dets) {
         free_detections(m_dets, m_nboxes);
+        m_dets = nullptr;
+    }
 }
 
 bool Detector::impl::setup(std::string label_names_file,

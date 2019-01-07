@@ -716,21 +716,37 @@ float network_accuracy_multi(network *net, data d, int n)
 void free_network(network *net)
 {
     int i;
+
+    if (!net)
+        return;
+
 #ifdef CUDNN
     cudnn_free_handles();
 #endif
     for(i = 0; i < net->n; ++i){
         free_layer(net->layers[i]);
     }
-    free(net->layers);
+    if(net->layers) free(net->layers);
     if(net->input) free(net->input);
     if(net->truth) free(net->truth);
 #ifdef GPU
     if(net->input_gpu) cuda_free(net->input_gpu);
     if(net->truth_gpu) cuda_free(net->truth_gpu);
-    if(net->workspace) cuda_free(net->workspace);
+    if(gpu_index >=0) {
+        if(net->workspace) cuda_free(net->workspace);
+    } else {
+        if(net->workspace) free(net->workspace);
+    }
     cuda_reset_device();
+#else
+    if(net->workspace) free(net->workspace);
 #endif
+    if(net->steps)  free(net->steps);
+    if(net->scales) free(net->scales);
+    if(net->seen)   free(net->seen);
+    if(net->t)      free(net->t);
+    if(net->cost)   free(net->cost);
+
     free(net);
 }
 
