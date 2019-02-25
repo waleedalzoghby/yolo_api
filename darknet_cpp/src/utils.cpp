@@ -7,6 +7,8 @@
 
 using namespace Darknet;
 
+#ifdef OPENCV
+
 void Darknet::image_overlay(const std::vector<Detection> detections, cv::Mat& image)
 {
     const int font_face = cv::FONT_HERSHEY_SIMPLEX;
@@ -63,6 +65,8 @@ void Darknet::image_overlay(const std::vector<Detection> detections, cv::Mat& im
         cv::putText(image, text, text_orig, font_face, font_scale, cv::Scalar(0, 0, 0), text_thickness, cv::LINE_AA);
     }
 }
+
+#endif /* OPENCV */
 
 void Darknet::filter_detections(const std::vector<Detection> input, std::vector<Detection>& output, std::vector<std::string> include)
 {

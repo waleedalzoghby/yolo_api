@@ -10,7 +10,6 @@
 #include <string>
 #include <chrono>
 #include <thread>
-#include <boost/filesystem.hpp>
 
 #define STR_HELPER(x) #x
 #define STR(x) STR_HELPER(x)
@@ -27,17 +26,17 @@
 #define GST_OUTPUT_STRING_END       " sync=false async=false "
 
 static Darknet::Detector g_detector;
-static Darknet::Image g_dnimage;
-static bool g_detector_busy;
+static std::vector<float> g_blob;
+static bool g_new_detections = false;
 
 static bool detect_in_image(void)
 {
-    if (!g_detector.detect(g_dnimage)) {
+    if (!g_detector.predict(g_blob)) {
         std::cerr << "Failed to run detector" << std::endl;
         return false;
     }
 
-    g_detector_busy = false;
+    g_new_detections = true;
     return true;
 }
 
@@ -62,9 +61,9 @@ int main(int argc, char *argv[])
 {
     cv::VideoCapture cap;
     cv::VideoWriter writer;
-    cv::Mat cvimage;
-    Darknet::Image dnimage;
-    Darknet::ConvertCvBgr8 converter;
+    cv::Mat image;
+    std::vector<float> blob;
+    Darknet::PreprocessCv pre;
     std::vector<Darknet::Detection> latest_detections;
     std::vector<Darknet::Detection> latest_filtered_detections;
     std::thread detector_thread;
@@ -85,54 +84,50 @@ int main(int argc, char *argv[])
         return -1;
     }
 
-    if (!cap.read(cvimage)) {
+    if (!cap.read(image)) {
         std::cerr << "Failed to capture initial camera image" << std::endl;
         return -1;
     }
 
-    if (!writer.open(GST_OUTPUT_STRING_START + ip_addr_dest + GST_OUTPUT_STRING_END, 0, TARGET_FPS, cvimage.size())) {
+    if (!writer.open(GST_OUTPUT_STRING_START + ip_addr_dest + GST_OUTPUT_STRING_END, 0, TARGET_FPS, image.size())) {
         std::cerr << "Could not open video output stream" << std::endl;
         return -1;
     }
-
-    int image_width = cap.get(cv::CAP_PROP_FRAME_WIDTH);
-    int image_height = cap.get(cv::CAP_PROP_FRAME_HEIGHT);
 
     if (!g_detector.setup(input_data_file,
                         input_cfg_file,
                         input_weights_file,
                         NMS_THRESHOLD,
                         DETECTION_THRESHOLD,
-                        DETECTION_HIER_THRESHOLD,
-                        image_width,
-                        image_height)) {
+                        DETECTION_HIER_THRESHOLD)) {
         std::cerr << "Setup failed" << std::endl;
         return -1;
     }
 
-    converter.setup(image_width, image_height, g_detector.get_width(), g_detector.get_height());
+    pre.setup(g_detector.get_width(), g_detector.get_height());
 
     while(1) {
 
-        if (!cap.read(cvimage)) {
+        if (!cap.read(image)) {
             std::cerr << "Video capture read failed/EoF" << std::endl;
             return -1;
         }
 
         // convert and resize opencv image to darknet image
-        if (!converter.convert(cvimage, dnimage)) {
+        if (!pre.run(image, blob)) {
             std::cerr << "Failed to convert opencv image to darknet image" << std::endl;
             return -1;
         }
 
         // if detector thread is finished, start it again
-        if (!g_detector_busy) {
+        if (g_new_detections) {
+            g_new_detections = false;
+
             if (detector_thread.joinable())
                 detector_thread.join();
 
-            g_detector.get_detections(latest_detections);
-            g_dnimage = dnimage;
-            g_detector_busy = true;
+            g_detector.get_detections(latest_detections, image.cols, image.rows);
+            g_blob = blob;
             detector_thread = std::thread(detect_in_image);
 
             // filter detections
@@ -140,11 +135,11 @@ int main(int argc, char *argv[])
         }
 
         // overlay detections
-        Darknet::image_overlay(latest_filtered_detections, cvimage);
+        Darknet::image_overlay(latest_filtered_detections, image);
         print_stats(latest_filtered_detections);
 
         // restream
-        writer.write(cvimage);
+        writer.write(image);
     }
 
     return 0;

@@ -16,9 +16,9 @@
 int main(int argc, char *argv[])
 {
     cv::VideoCapture cap;
-    cv::Mat cvimage;
-    Darknet::Image dnimage;
-    Darknet::ConvertCvBgr8 converter;
+    cv::Mat image;
+    std::vector<float> blob;
+    Darknet::PreprocessCv pre;
     Darknet::Detector detector;
     std::vector<Darknet::Detection> detections;
 
@@ -42,53 +42,48 @@ int main(int argc, char *argv[])
         return -1;
     }
 
-    int image_width = cap.get(cv::CAP_PROP_FRAME_WIDTH);
-    int image_height = cap.get(cv::CAP_PROP_FRAME_HEIGHT);
-
     if (!detector.setup(input_names_file,
                         input_cfg_file,
                         input_weights_file,
                         NMS_THRESHOLD,
                         DETECTION_THRESHOLD,
-                        DETECTION_HIER_THRESHOLD,
-                        image_width,
-                        image_height)) {
+                        DETECTION_HIER_THRESHOLD)) {
         std::cerr << "Setup failed" << std::endl;
         return -1;
     }
 
-    converter.setup(image_width, image_height, detector.get_width(), detector.get_height());
+    pre.setup(detector.get_width(), detector.get_height());
     auto prevTime = std::chrono::system_clock::now();
 
     while(1) {
 
-        if (!cap.read(cvimage)) {
+        if (!cap.read(image)) {
             std::cerr << "Video capture read failed/EoF" << std::endl;
             return -1;
         }
 
-        // convert and resize opencv image to darknet image
-        if (!converter.convert(cvimage, dnimage)) {
+        // preprocess image
+        if (!pre.run(image, blob)) {
             std::cerr << "Failed to convert opencv image to darknet image" << std::endl;
             return -1;
         }
 
         // run detector
-        if (!detector.detect(dnimage)) {
+        if (!detector.predict(blob)) {
             std::cerr << "Failed to run detector" << std::endl;
             return -1;
         }
-        detector.get_detections(detections);
+        detector.get_detections(detections, image.cols, image.rows);
 
         // draw bounding boxes
-        Darknet::image_overlay(detections, cvimage);
+        Darknet::image_overlay(detections, image);
 
         auto now = std::chrono::system_clock::now();
         std::chrono::duration<double> period = (now - prevTime);
         prevTime = now;
         std::cout << "FPS: " << 1 / period.count() << std::endl;
 
-        cv::imshow("Overlay", cvimage);
+        cv::imshow("Overlay", image);
         cv::waitKey(1);
 
     }
