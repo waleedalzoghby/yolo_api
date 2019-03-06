@@ -9,7 +9,7 @@ using namespace Darknet;
 
 #ifdef OPENCV
 
-void Darknet::image_overlay(const std::vector<Detection> detections, cv::Mat& image)
+void Darknet::image_overlay(const std::vector<Detection> detections, cv::Mat& image, const std::vector<std::string> label_names)
 {
     const int font_face = cv::FONT_HERSHEY_SIMPLEX;
     const double font_scale = 0.5;
@@ -45,8 +45,17 @@ void Darknet::image_overlay(const std::vector<Detection> detections, cv::Mat& im
                                 std::min(static_cast<int>(detection.y + (detection.height / 2)), image.rows - 1));
 
 
+        /* determine box color */
         cv::Scalar color(colors[detection.label_index % number_of_colors]);
-        std::string text(std::to_string(static_cast<int>(detection.probability * 100)) + "% " + detection.label);
+
+        /* determine text label */
+        std::string label;
+        if (label_names.size() > static_cast<size_t>(detection.label_index))
+            label = label_names[detection.label_index];
+        else
+            label = std::to_string(detection.label_index);
+
+        std::string text(std::to_string(static_cast<int>(detection.probability * 100)) + "% " + label);
 
         int baseline;
         cv::Size text_size = cv::getTextSize(text, font_face, font_scale, text_thickness, &baseline);
@@ -68,13 +77,28 @@ void Darknet::image_overlay(const std::vector<Detection> detections, cv::Mat& im
 
 #endif /* OPENCV */
 
-void Darknet::filter_detections(const std::vector<Detection> input, std::vector<Detection>& output, std::vector<std::string> include)
+bool Darknet::read_text_file(std::vector<std::string>& lines, std::string filename)
+{
+    std::ifstream infile(filename);
+
+    if (!infile)
+        return false;
+
+    std::string line;
+    while (std::getline(infile, line)) {
+        lines.push_back(line);
+    }
+
+    return true;
+}
+
+void Darknet::filter_detections(const std::vector<Detection> input, std::vector<Detection>& output, std::vector<int> include)
 {
     output.clear();
 
     for (auto detection : input) {
         for (auto label : include) {
-            if (label == detection.label) {
+            if (label == detection.label_index) {
                 output.push_back(detection);
             }
         }

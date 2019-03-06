@@ -22,19 +22,17 @@ int main(int argc, char *argv[])
     std::vector<Darknet::Detection> detections;
 
     if (argc < 4) {
-        std::cerr << "Usage: " << argv[0] << " <input_names_file> <input_cfg_file> <input_weights_file>" << std::endl;
+        std::cerr << "Usage: " << argv[0] << " <input_cfg_file> <input_weights_file>" << std::endl;
         return -1;
     }
 
-    std::string input_names_file(argv[1]);
-    std::string input_cfg_file(argv[2]);
-    std::string input_weights_file(argv[3]);
+    std::string input_cfg_file(argv[1]);
+    std::string input_weights_file(argv[2]);
 
     for (int i=0; i<100; i++) {
         detector = new Darknet::Detector();
 
-        if (!detector->setup(input_names_file,
-                            input_cfg_file,
+        if (!detector->setup(input_cfg_file,
                             input_weights_file,
                             NMS_THRESHOLD,
                             DETECTION_THRESHOLD,

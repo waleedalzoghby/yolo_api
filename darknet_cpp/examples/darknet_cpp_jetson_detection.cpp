@@ -28,6 +28,7 @@
 static Darknet::Detector g_detector;
 static std::vector<float> g_blob;
 static bool g_new_detections = false;
+static std::vector<std::string> g_label_names;
 
 static bool detect_in_image(void)
 {
@@ -51,7 +52,12 @@ static void print_stats(std::vector<Darknet::Detection> detections)
     std::cout << " Labels: ";
 
     for (auto detection : detections) {
-        std::cout << detection.label << ", " << detection.probability << "; ";
+        std::string label;
+        if (g_label_names.size() > static_cast<size_t>(detection.label_index))
+            label = g_label_names[detection.label_index];
+        else
+            label = std::to_string(detection.label_index);
+        std::cout << label << ", " << detection.probability << "; ";
     }
 
     std::cout << std::endl;
@@ -67,14 +73,14 @@ int main(int argc, char *argv[])
     std::vector<Darknet::Detection> latest_detections;
     std::vector<Darknet::Detection> latest_filtered_detections;
     std::thread detector_thread;
-    std::vector<std::string> detection_filter( {"person"} );
+    std::vector<int> detection_filter( {0} );
 
     if (argc < 5) {
-        std::cerr << "Usage: " << argv[0] << " <input_data_file> <input_cfg_file> <input_weights_file> <ip_addr_destination>" << std::endl;
+        std::cerr << "Usage: " << argv[0] << " <input_names_file> <input_cfg_file> <input_weights_file> <ip_addr_destination>" << std::endl;
         return -1;
     }
 
-    std::string input_data_file(argv[1]);
+    std::string input_names_file(argv[1]);
     std::string input_cfg_file(argv[2]);
     std::string input_weights_file(argv[3]);
     std::string ip_addr_dest(argv[4]);
@@ -94,8 +100,14 @@ int main(int argc, char *argv[])
         return -1;
     }
 
-    if (!g_detector.setup(input_data_file,
-                        input_cfg_file,
+    // read label names
+    if (!Darknet::read_text_file(g_label_names, input_names_file)) {
+        std::cerr << "Failed to read names file" << std::endl;
+        return 1;
+    }
+
+    // setup detector
+    if (!g_detector.setup(input_cfg_file,
                         input_weights_file,
                         NMS_THRESHOLD,
                         DETECTION_THRESHOLD,
@@ -104,6 +116,7 @@ int main(int argc, char *argv[])
         return -1;
     }
 
+    // setup preprocessor
     pre.setup(g_detector.get_width(), g_detector.get_height());
 
     while(1) {
@@ -113,9 +126,9 @@ int main(int argc, char *argv[])
             return -1;
         }
 
-        // convert and resize opencv image to darknet image
+        // preprocess image
         if (!pre.run(image, blob)) {
-            std::cerr << "Failed to convert opencv image to darknet image" << std::endl;
+            std::cerr << "Failed to preprocess image" << std::endl;
             return -1;
         }
 
@@ -126,7 +139,13 @@ int main(int argc, char *argv[])
             if (detector_thread.joinable())
                 detector_thread.join();
 
-            g_detector.get_detections(latest_detections, image.cols, image.rows);
+            // post process and get detections
+            if (!g_detector.post_process(image.cols, image.rows)) {
+                std::cerr << "Failed to post process" << std::endl;
+                return 1;
+            }
+
+            latest_detections = g_detector.get_detections();
             g_blob = blob;
             detector_thread = std::thread(detect_in_image);
 
@@ -135,7 +154,7 @@ int main(int argc, char *argv[])
         }
 
         // overlay detections
-        Darknet::image_overlay(latest_filtered_detections, image);
+        Darknet::image_overlay(latest_filtered_detections, image, g_label_names);
         print_stats(latest_filtered_detections);
 
         // restream

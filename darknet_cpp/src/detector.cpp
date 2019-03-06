@@ -14,20 +14,22 @@ class Detector::impl : public Predictor::impl
 {
 public:
     impl();
-    bool setup(std::string label_names_file,
-                std::string net_cfg_file,
+    bool setup(std::string net_cfg_file,
                 std::string weight_cfg_file,
                 float nms,
                 float thresh,
                 float hier_thresh);
-    bool get_detections(std::vector<Detection>& detections, size_t width, size_t height);
+    bool post_process(size_t width, size_t height);
+    bool get_detections(Detection* detections, size_t size);
+    std::vector<Detection> get_detections();
+    size_t get_num_detections();
 
 private:
-    std::vector<std::string> m_class_names;
     int     m_classes;
     float   m_nms;
     float   m_threshold;
     float   m_hier_threshold;
+    std::vector<Detection> m_detections;
 };
 
 /*
@@ -35,14 +37,13 @@ private:
  */
 
 Detector::impl::impl() :
-        m_class_names(),
         m_classes(0),
         m_nms(0),
         m_threshold(0),
-        m_hier_threshold(0) {}
+        m_hier_threshold(0),
+        m_detections(0) {}
 
-bool Detector::impl::setup(std::string label_names_file,
-                std::string net_cfg_file,
+bool Detector::impl::setup(std::string net_cfg_file,
                 std::string weight_cfg_file,
                 float nms,
                 float thresh,
@@ -51,17 +52,6 @@ bool Detector::impl::setup(std::string label_names_file,
     m_nms = nms;
     m_threshold = thresh;
     m_hier_threshold = hier_thresh;
-
-    if (!file_exists(label_names_file)) {
-        EPRINTF("Label names file %s not found\n", label_names_file.c_str());
-        return false;
-    }
-
-    std::ifstream label_names_stream(label_names_file);
-    std::string name;
-
-    while (std::getline(label_names_stream, name))
-        m_class_names.push_back(name);
 
     if (!Predictor::impl::setup(net_cfg_file, weight_cfg_file))
         return false;
@@ -73,40 +63,37 @@ bool Detector::impl::setup(std::string label_names_file,
     return true;
 }
 
-bool Detector::impl::get_detections(std::vector<Detection>& detections, size_t width, size_t height)
+bool Detector::impl::post_process(size_t width, size_t height)
 {
     int i;
     int nboxes;
     detection* dets;
-    int out_width = width;
-    int out_height = height;
     int relative = 0;
 
-    if (!m_bSetup)
+    if (!m_bSetup) {
+        EPRINTF("Not setup!\n");
         return false;
+    }
 
-    if (out_width == 0 || out_height == 0) {
-        out_width = m_net->w;
-        out_height = m_net->h;
+    if (width == 0 || height == 0) {
+        width = m_net->w;
+        height = m_net->h;
         relative = 1;
     }
 
-    dets = get_network_boxes(m_net, out_width, out_height, m_threshold, m_hier_threshold, 0, relative, &nboxes);
+    dets = get_network_boxes(m_net, width, height, m_threshold, m_hier_threshold, 0, relative, &nboxes);
 
+    // nms sets objectness and class probs to zero of suppressed boxes
     if (m_nms > 0)
         do_nms(dets, nboxes, m_classes, m_nms);
 
-    // Extract detections in correct format
-    detections.clear();
+    m_detections.clear();
+
     for (i = 0; i < nboxes; ++i) {
         float prob;
-        size_t class_index = max_index(dets[i].prob, m_classes);
 
-        if (class_index >= m_class_names.size()) {
-            EPRINTF("Class index exceeds class names list, probably the model does not match the names list\n");
-            free_detections(dets, nboxes);
-            return false;
-        }
+        // find the index where the class probability is the highest
+        size_t class_index = max_index(dets[i].prob, m_classes);
 
         prob = dets[i].prob[class_index];
 
@@ -118,14 +105,52 @@ bool Detector::impl::get_detections(std::vector<Detection>& detections, size_t w
             detection.height = dets[i].bbox.h;
             detection.probability = prob;
             detection.label_index = class_index;
-            detection.label = m_class_names[class_index];
-            detections.push_back(detection);
+            m_detections.push_back(detection);
         }
     }
 
     free_detections(dets, nboxes);
 
     return true;
+}
+
+bool Detector::impl::get_detections(Detection* detections, size_t size)
+{
+    if (!m_bSetup) {
+        EPRINTF("Not setup!\n");
+        return false;
+    }
+
+    if (size < m_detections.size()) {
+        EPRINTF("Buffer size (%lu) too small to fit number of detections (%lu)\n", size, m_detections.size());
+        return false;
+    }
+
+    // return a copy
+    memcpy(detections, &m_detections[0], m_detections.size() * sizeof(Detection));
+
+    return true;
+}
+
+std::vector<Detection> Detector::impl::get_detections()
+{
+    if (!m_bSetup) {
+        EPRINTF("Not setup!\n");
+        return std::vector<Detection>();
+    }
+
+    // return a copy (implicit vector copy)
+    return m_detections;
+}
+
+size_t Detector::impl::get_num_detections()
+{
+    if (!m_bSetup) {
+        EPRINTF("Not setup!\n");
+        return 0;
+    }
+
+    return m_detections.size();
 }
 
 /*
@@ -138,18 +163,33 @@ Detector::Detector() :
     set_impl(pimpl);
 }
 
-bool Detector::setup(std::string label_names_file,
-                std::string net_cfg_file,
+bool Detector::setup(std::string net_cfg_file,
                 std::string weight_cfg_file,
                 float nms,
                 float thresh,
                 float hier_thresh)
 {
-    return pimpl->setup(label_names_file, net_cfg_file, weight_cfg_file, nms,
+    return pimpl->setup(net_cfg_file, weight_cfg_file, nms,
                             thresh, hier_thresh);
 }
 
-bool Detector::get_detections(std::vector<Detection>& detections, size_t width, size_t height)
+bool Detector::post_process(size_t width, size_t height, int batch_idx)
 {
-    return pimpl->get_detections(detections, width, height);
+    (void)batch_idx;
+    return pimpl->post_process(width, height);
+}
+
+std::vector<Detection> Detector::get_detections()
+{
+    return pimpl->get_detections();
+}
+
+bool Detector::get_detections(Detection* detections, size_t size)
+{
+    return pimpl->get_detections(detections, size);
+}
+
+size_t Detector::get_num_detections()
+{
+    return pimpl->get_num_detections();
 }

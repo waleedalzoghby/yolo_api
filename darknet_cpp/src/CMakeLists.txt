@@ -6,6 +6,7 @@ set (HEADERS
     darknet.hpp
     detection.hpp
     detector.hpp
+    exports.cpp
     identifier.hpp
     logging.hpp
     predictor.hpp

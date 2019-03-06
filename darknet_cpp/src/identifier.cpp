@@ -37,7 +37,7 @@ bool Identifier::impl::get_identifier(float* identifier, int size, int batch_idx
     }
 
     if (size < m_net->outputs) {
-        EPRINTF("Input buffer (%d) must be >= network output size (%d)\n", size, m_net->outputs);
+        EPRINTF("Input buffer size (%d) must be >= network output size (%d)\n", size, m_net->outputs);
         return false;
     }
 

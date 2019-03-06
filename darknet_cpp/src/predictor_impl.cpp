@@ -66,7 +66,7 @@ bool Predictor::impl::predict(const float* data, size_t size)
 
     size_t expected_input_size = m_net->w * m_net->h * m_net->c * m_net->batch;
     if (size != expected_input_size) {
-        EPRINTF("Expected data input size to be %lu, got %lu", expected_input_size, size);
+        EPRINTF("Expected data input size to be %lu, got %lu\n", expected_input_size, size);
         return false;
     }
 
@@ -77,32 +77,40 @@ bool Predictor::impl::predict(const float* data, size_t size)
 
 int Predictor::impl::get_width()
 {
-    if (!m_bSetup)
+    if (!m_bSetup) {
+        EPRINTF("Not setup!\n");
         return 0;
+    }
 
     return m_net->w;
 }
 
 int Predictor::impl::get_height()
 {
-    if (!m_bSetup)
+    if (!m_bSetup) {
+        EPRINTF("Not setup!\n");
         return 0;
+    }
 
     return m_net->h;
 }
 
 int Predictor::impl::get_channels()
 {
-    if (!m_bSetup)
+    if (!m_bSetup) {
+        EPRINTF("Not setup!\n");
         return 0;
+    }
 
     return m_net->c;
 }
 
 int Predictor::impl::get_batch()
 {
-    if (!m_bSetup)
+    if (!m_bSetup) {
+        EPRINTF("Not setup!\n");
         return 0;
+    }
 
     return m_net->batch;
 }
