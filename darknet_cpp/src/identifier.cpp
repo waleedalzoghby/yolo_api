@@ -16,24 +16,39 @@ using namespace Darknet;
 class Identifier::impl : public Predictor::impl
 {
 public:
-    bool get_identifier(std::vector<float>& identifier, int batch_idx);
+    bool get_identifier(float* identifier, int size, int batch_idx);
+    int get_identifier_size();
 };
 
 /*
  *  Implementations
  */
 
-bool Identifier::impl::get_identifier(std::vector<float>& identifier, int batch_idx)
+bool Identifier::impl::get_identifier(float* identifier, int size, int batch_idx)
 {
+    if (!m_bSetup) {
+        EPRINTF("Not Setup!\n");
+        return false;
+    }
+
     if (batch_idx < 0 || batch_idx >= m_net->batch) {
         EPRINTF("Batch index must be smaller than %d and greater than zero\n", m_net->batch);
         return false;
     }
 
-    identifier.resize(m_net->outputs);
-    memcpy(&identifier[0], &m_net->output[batch_idx * m_net->outputs], m_net->outputs * sizeof(float));
+    if (size < m_net->outputs) {
+        EPRINTF("Input buffer (%d) must be >= network output size (%d)\n", size, m_net->outputs);
+        return false;
+    }
+
+    memcpy(identifier, &m_net->output[batch_idx * m_net->outputs], m_net->outputs * sizeof(float));
 
     return true;
+}
+
+int Identifier::impl::get_identifier_size()
+{
+    return m_net->outputs;
 }
 
 /*
@@ -48,5 +63,16 @@ Identifier::Identifier() :
 
 bool Identifier::get_identifier(std::vector<float>& identifier, int batch_idx)
 {
-    return pimpl->get_identifier(identifier, batch_idx);
+    identifier.resize(pimpl->get_identifier_size());
+    return pimpl->get_identifier(&identifier[0], identifier.size(), batch_idx);
+}
+
+bool Identifier::get_identifier(float* identifier, size_t size, int batch_idx)
+{
+    return pimpl->get_identifier(identifier, size, batch_idx);
+}
+
+int Identifier::get_identifier_size()
+{
+    return pimpl->get_identifier_size();
 }

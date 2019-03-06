@@ -57,7 +57,7 @@ void Predictor::impl::teardown()
     }
 }
 
-bool Predictor::impl::predict(std::vector<float> data)
+bool Predictor::impl::predict(const float* data, size_t size)
 {
     if (!m_bSetup) {
         EPRINTF("Not Setup!\n");
@@ -65,12 +65,12 @@ bool Predictor::impl::predict(std::vector<float> data)
     }
 
     size_t expected_input_size = m_net->w * m_net->h * m_net->c * m_net->batch;
-    if (data.size() != expected_input_size) {
-        EPRINTF("Expected data input size to be %lu, got %lu", expected_input_size, data.size());
+    if (size != expected_input_size) {
+        EPRINTF("Expected data input size to be %lu, got %lu", expected_input_size, size);
         return false;
     }
 
-    (void) network_predict(m_net, &data[0]);
+    (void) network_predict(m_net, const_cast<float*>(data));
 
     return true;
 }

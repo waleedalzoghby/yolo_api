@@ -27,9 +27,14 @@ void Predictor::teardown()
     pimpl->teardown();
 }
 
-bool Predictor::predict(std::vector<float> data)
+bool Predictor::predict(const std::vector<float>& data)
 {
-    return pimpl->predict(data);
+    return pimpl->predict(&data[0], data.size());
+}
+
+bool Predictor::predict(const float* data, size_t size)
+{
+    return pimpl->predict(data, size);
 }
 
 int Predictor::get_width()

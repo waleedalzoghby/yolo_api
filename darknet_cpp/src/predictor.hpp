@@ -37,7 +37,15 @@ public:
      *  data:   preprocessed data blob that matches the network input
      *  returns true on success
      */
-    bool predict(std::vector<float> data);
+    bool predict(const std::vector<float>& data);
+
+    /*
+     *  Run the network on the given preprocessed input data
+     *  data:   buffer with preprocessed data blob that matches the network input
+     *  size:   size of the buffer in number of floats
+     *  returns true on success
+     */
+    bool predict(const float* data, size_t size);
 
     /*
      *  Return the input width of the network
