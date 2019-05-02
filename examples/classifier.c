@@ -385,6 +385,7 @@ void validate_classifier_single(char *datacfg, char *filename, char *weightfile)
     float avg_topk = 0;
     int *indexes = calloc(topk, sizeof(int));
 
+    double time_sum = 0;
     for(i = 0; i < m; ++i){
         int class = -1;
         char *path = paths[i];
@@ -400,7 +401,9 @@ void validate_classifier_single(char *datacfg, char *filename, char *weightfile)
         //show_image(im, "orig");
         //show_image(crop, "cropped");
         //cvWaitKey(0);
+        double time = what_time_is_it_now();
         float *pred = network_predict(net, crop.data);
+	time_sum += what_time_is_it_now() - time;
         if(net->hierarchy) hierarchy_predictions(pred, net->outputs, net->hierarchy, 1, 1);
 
         free_image(im);
@@ -414,6 +417,7 @@ void validate_classifier_single(char *datacfg, char *filename, char *weightfile)
 
         printf("%s, %d, %f, %f, \n", paths[i], class, pred[0], pred[1]);
         printf("%d: top 1: %f, top %d: %f\n", i, avg_acc/(i+1), topk, avg_topk/(i+1));
+	printf("Avg inference time (secs) = %lf\n", time_sum / (i+1));
     }
 }
 
