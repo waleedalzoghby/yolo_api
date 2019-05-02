@@ -1,4 +1,5 @@
 #include "pruning.h"
+#include <math.h>
 
 struct FilterInfo
 {
@@ -63,7 +64,7 @@ void prune_network(network *net, float percentile)
         // sort L2 norms in ascending manner
         qsort(filter_info, l.n, sizeof(struct FilterInfo), sfp_compare);
 
-        num = round(l.n * percentile);
+        num = roundf(l.n * percentile);
         if (num > l.n)
             num = l.n;
 
