@@ -153,6 +153,7 @@ struct layer{
     int steps;
     int hidden;
     int truth;
+    int prune;
     float smooth;
     float dot;
     float angle;
@@ -222,8 +223,6 @@ struct layer{
     float * forgot_state;
     float * forgot_delta;
     float * state_delta;
-    float * combine_cpu;
-    float * combine_delta_cpu;
 
     float * concat;
     float * concat_delta;
@@ -277,7 +276,6 @@ struct layer{
     float *temp3_cpu;
 
     float *dh_cpu;
-    float *hh_cpu;
     float *prev_cell_cpu;
     float *cell_cpu;
     float *f_cpu;
@@ -631,6 +629,7 @@ void scal_gpu(int N, float ALPHA, float * X, int INCX);
 void copy_gpu(int N, float * X, int INCX, float * Y, int INCY);
 
 void cuda_set_device(int n);
+void cuda_reset_device();
 void cuda_free(float *x_gpu);
 float *cuda_make_array(float *x, size_t n);
 void cuda_pull_array(float *x_gpu, float *x, size_t n);

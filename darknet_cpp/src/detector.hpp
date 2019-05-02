@@ -6,94 +6,76 @@
 #ifndef DETECTOR_HPP
 #define DETECTOR_HPP
 
-#include <string>
-#include <memory>
-#include "image.hpp"
+#include "predictor.hpp"
 #include "detection.hpp"
 
 namespace Darknet
 {
 
-class Detector
+class Detector : public Predictor
 {
 public:
     Detector();
-    ~Detector();
+
+    /* NOTE: detector currently only supports batch size 1 */
 
     /*
-     *  Setup network for detection
-     *  label_names_file:   file with class names, newline separated
+     *  Setup network for detection, call this one i.s.o. the setup method in the Predictor class
      *  net_cfg_file:       network configuration file that describes the network architecture
      *  weight_cfg_file:    weights file that contains the trained network weights
      *  nms:                non maxima suppression threshold (number between 0 and 1)
      *  thresh:             detection threshold. Detection probabilities lower than this threshold
      *                      will not be considered detections (number between 0 and 1)
      *  hier_thres:         Hierarchical threshold ??? (number between 0 and 1)
-     *  output_width:       Detection coordinates will be scaled according to this width. See the
-     *                      'get_detections' method for more info
-     *  output_height:      Detection coordinates will be scaled according to this height. See the
-     *                      'get_detections' method for more info
-     *  NOTE: if output_width and output_height are 0, they will be set internally to the network input
-     *  width and height respectively
      *
      *  returns true on success
      */
-    bool setup(std::string label_names_file,
-                std::string net_cfg_file,
+    bool setup(std::string net_cfg_file,
                 std::string weight_cfg_file,
                 float nms,
                 float thresh,
-                float hier_thresh,
-                int output_width = 0,
-                int output_height = 0);
+                float hier_thresh);
 
     /*
-     *  Set output size to scale detection coordinates. Usefull if output_size it not yet known when calling setup
-     *  output_width:       Detection coordinates will be scaled according to this width. See the
-     *                      'get_detections' method for more info
-     *  output_height:      Detection coordinates will be scaled according to this height. See the
-     *                      'get_detections' method for more info
-     */
-    void set_output_size(int output_width, int output_height);
-
-    /*
-     *  Run the network on a given input image
-     *  image:  input image. The image dimensions (width, height and number of channels) must match the
-     *          network input size, if not, the function will return false
-     *  returns true on success
-     */
-    bool detect(const Image & image);
-
-    /*
-     *  Retrieve detections calulated with the detect method
-     *  detections:     list of retrieved detections
+     *  Post process detections for one forward pass (call after predict)
+     *  This method calculates bounding boxes, probabilties and applies NMS
+     *
+     *  width:          width dimension of the detections (normally the original image width)
+     *  height:         height dimension of the detections (normally the original image height)
+     *  batch_idx:      Currently ignored
      *  returns true on success
      *
-     *  The detection values x, y, width, height have dimensions according to the given 'output_width'
-     *  and 'output_height' (see setup or set_output_size methods).
-     *      x:      0 = left edge of image, output_width = right edge of image
-     *      y:      0 = top edge of image, output_height = bottom edge of image
-     *      width:  0 = 0, output_width = width of image
-     *      height: 0 = 0, output_height = height of image
-     *
-     *  Note that the values can go beyond the interval [0, 1] so clipping is needed
-     *  for visualization
+     *  The detection values x, y, width, height have dimensions according to the given width/height
+     *  if width or height are zero, relative coordinates are used (values between 0 and 1)
      */
-    bool get_detections(std::vector<Detection>& detections);
+    bool post_process(size_t width = 0, size_t height = 0, int batch_idx = 0);
 
     /*
-     *  Get detector network input dimensions when setup has already constructed
-     *  the network
+     *  Get the post processed detections (call after post_process)
+     *  returns a list of detections
      */
-    int get_width();
-    int get_height();
-    int get_channels();
+    std::vector<Detection> get_detections();
+
+    /*
+     *  Get the post processed detections (call after post_process)
+     *  detections:     Buffer to hold a list of retrieved detections provided by the user.
+     *                  The buffer must be large enough. Call get_num_detections() to know the
+     *                  minimum required buffer size.
+     *  size:           Size of the buffer (in number of Detection structs)
+     *  returns true on success
+     */
+    bool get_detections(Detection* detections, size_t size);
+
+    /*
+     *  Return the number of detections in the last output
+     */
+    size_t get_num_detections();
 
 private:
 
     /* Pimpl idiom: hide original implementation from this api */
     class   impl;
-    std::unique_ptr<impl> pimpl;
+    std::shared_ptr<impl> pimpl;
 };
 
 } /* namespace Darknet */

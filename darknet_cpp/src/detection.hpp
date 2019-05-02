@@ -17,8 +17,7 @@ namespace Darknet
         float width;        // box relative width
         float height;       // box relative height
         float probability;  // label probability
-        int label_index;    // label index that matches the labels list (starts with 0)
-        std::string label;  // label name
+        int label_index;    // label index (starts with 0)
     };
 }
 

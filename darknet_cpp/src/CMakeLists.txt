@@ -3,24 +3,30 @@ include_directories (${CUDA_INCLUDE_DIRS})
 include_directories ("${DARKNET_ROOT}/include")
 
 set (HEADERS
-    convert_cv.hpp
-    convert_cv_bgr8.hpp
     darknet.hpp
     detection.hpp
     detector.hpp
-    image.hpp
+    exports.cpp
+    identifier.hpp
     logging.hpp
+    predictor.hpp
+    preprocess_cv.hpp
     utils.hpp
+)
+set (PRIVATE_HEADERS
+    predictor_impl.hpp
 )
 
 set (SOURCES
-    convert_cv_bgr8.cpp
     detector.cpp
-    image.cpp
+    identifier.cpp
+    predictor.cpp
+    predictor_impl.cpp
+    preprocess_cv.cpp
     utils.cpp
 )
 
-set (SRC ${SOURCES} ${HEADERS})
+set (SRC ${SOURCES} ${HEADERS} ${PRIVATE_HEADERS})
 
 set (DEBUG_STR "0")
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")
@@ -48,7 +54,6 @@ add_library (darknet_cpp SHARED ${SRC})
 
 add_dependencies (darknet_cpp darknet)
 target_link_libraries (darknet_cpp
-    "-lboost_filesystem -lboost_system"
     ${DARKNET_ROOT}/libdarknet.a
     "-pthread"
     ${OpenCV_LIBS}

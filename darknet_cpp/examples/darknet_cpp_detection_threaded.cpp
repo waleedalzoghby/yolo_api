@@ -16,12 +16,12 @@
 #define NMS_THRESHOLD               0.4
 
 static Darknet::Detector g_detector;
-static Darknet::Image g_dnimage;
+static std::vector<float> g_blob;
 static bool g_new_detections = false;
 
 static bool detect_in_image(void)
 {
-    if (!g_detector.detect(g_dnimage)) {
+    if (!g_detector.predict(g_blob)) {
         std::cerr << "Failed to run detector" << std::endl;
         return false;
     }
@@ -33,15 +33,16 @@ static bool detect_in_image(void)
 int main(int argc, char *argv[])
 {
     cv::VideoCapture cap;
-    cv::Mat cvimage, cvimage_prev;
-    Darknet::Image dnimage;
-    Darknet::ConvertCvBgr8 converter;
-    std::thread detector_thread;
+    cv::Mat image, image_prev;
+    std::vector<std::string> label_names;
+    std::vector<float> blob;
     std::vector<Darknet::Detection> detections;
+    Darknet::PreprocessCv pre;
+    std::thread detector_thread;
 
     if (argc < 4) {
         std::cerr << "Usage: " << argv[0] << " <input_names_file> <input_cfg_file> <input_weights_file> [<videofile>]" << std::endl;
-        return -1;
+        return 1;
     }
 
     std::string input_names_file(argv[1]);
@@ -52,75 +53,82 @@ int main(int argc, char *argv[])
         std::string videofile(argv[4]);
         if (!cap.open(videofile)) {
             std::cerr << "Could not open video file" << std::endl;
-            return -1;
+            return 1;
         }
     } else if (!cap.open(0)) {
         std::cerr << "Could not open video input stream" << std::endl;
-        return -1;
+        return 1;
     }
 
-    int image_width = cap.get(cv::CAP_PROP_FRAME_WIDTH);
-    int image_height = cap.get(cv::CAP_PROP_FRAME_HEIGHT);
+    // read label names
+    if (!Darknet::read_text_file(label_names, input_names_file)) {
+        std::cerr << "Failed to read names file" << std::endl;
+        return 1;
+    }
 
-    if (!g_detector.setup(input_names_file,
-                        input_cfg_file,
+    // setup detector
+    if (!g_detector.setup(input_cfg_file,
                         input_weights_file,
                         NMS_THRESHOLD,
                         DETECTION_THRESHOLD,
-                        DETECTION_HIER_THRESHOLD,
-                        image_width,
-                        image_height)) {
+                        DETECTION_HIER_THRESHOLD)) {
         std::cerr << "Setup failed" << std::endl;
-        return -1;
+        return 1;
     }
 
-    converter.setup(image_width, image_height, g_detector.get_width(), g_detector.get_height());
+    // setup preprocessor
+    pre.setup(g_detector.get_width(), g_detector.get_height());
     auto prevTime = std::chrono::system_clock::now();
 
     while(1) {
 
-        if (!cap.read(cvimage)) {
+        if (!cap.read(image)) {
             std::cerr << "Video capture read failed/EoF" << std::endl;
-            return -1;
+            return 1;
         }
 
-        // convert and resize opencv image to darknet image
-        if (!converter.convert(cvimage, dnimage)) {
-            std::cerr << "Failed to convert opencv image to darknet image" << std::endl;
-            return -1;
+        // preprocess image
+        if (!pre.run(image, blob)) {
+            std::cerr << "Failed to preprocess image" << std::endl;
+            return 1;
         }
 
-        if (detector_thread.joinable()) {
+        if (detector_thread.joinable())
             detector_thread.join();
-        }
 
-        g_dnimage = dnimage;
+        // set input data ready for inference thread
+        g_blob = blob;
 
         if (g_new_detections) {
             g_new_detections = false;
 
-            // get detections
-            g_detector.get_detections(detections);
+            // post process and get detections
+            if (!g_detector.post_process(image.cols, image.rows)) {
+                std::cerr << "Failed to post process" << std::endl;
+                return 1;
+            }
+
+            detections = g_detector.get_detections();
 
             // start new detection thread
             detector_thread = std::thread(detect_in_image);
 
             // draw bounding boxes
-            Darknet::image_overlay(detections, cvimage_prev);
+            Darknet::image_overlay(detections, image_prev, label_names);
 
             auto now = std::chrono::system_clock::now();
             std::chrono::duration<double> period = (now - prevTime);
             prevTime = now;
             std::cout << "FPS: " << 1 / period.count() << std::endl;
 
-            cv::imshow("Overlay", cvimage_prev);
+            cv::imshow("Overlay", image_prev);
             cv::waitKey(1);
 
         } else {
             detector_thread = std::thread(detect_in_image);
         }
 
-        cvimage_prev = cvimage.clone();
+        image_prev = image.clone();
     }
 
     return 0;

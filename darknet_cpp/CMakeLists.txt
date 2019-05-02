@@ -12,6 +12,7 @@ include(build_type)
 # flags and parameters
 set (WITH_GPU true CACHE BOOL "Use CUDA")
 set (WITH_CUDNN true CACHE BOOL "Use libcudnn")
+set (WITH_OPENCV true CACHE BOOL "Use Opencv (for pre-processing)")
 set (WITH_ADDRESS_SANITIZER false CACHE BOOL "Enable address sanitizer. NOTE: only works without cuda/cudnn")
 set (default_build_type "Release")
 
@@ -51,7 +52,10 @@ if (${WITH_CUDNN})
     set (CUDNN_LIBS "-lcudnn")
 endif()
 
-find_package(OpenCV REQUIRED)
+if (${WITH_OPENCV})
+    find_package(OpenCV REQUIRED)
+    add_definitions(-DOPENCV)
+endif()
 
 add_subdirectory(src)
 add_subdirectory(examples)
