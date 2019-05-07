@@ -16,7 +16,7 @@ float *get_regression_values(char **labels, int n)
     return v;
 }
 
-void train_classifier(char *datacfg, char *cfgfile, char *weightfile, int *gpus, int ngpus, int clear, float prune_level)
+void train_classifier(char *datacfg, char *cfgfile, char *weightfile, int *gpus, int ngpus, int clear)
 {
     int i;
 
@@ -97,6 +97,15 @@ void train_classifier(char *datacfg, char *cfgfile, char *weightfile, int *gpus,
 
     int count = 0;
     int epoch = (*net->seen)/N;
+
+    // prune prior to training if requested
+    if (net->prune_rate > 0 && net->prune_start == epoch) {
+        printf("Pruning prior to training\n");
+        time=what_time_is_it_now();
+        prune_networks(nets, ngpus);
+        printf("Pruning done: %lf seconds\n", what_time_is_it_now() - time);
+    }
+
     while(get_current_batch(net) < net->max_batches || net->max_batches == 0){
         if(net->random && count++%40 == 0){
             printf("Resizing\n");
@@ -146,10 +155,11 @@ void train_classifier(char *datacfg, char *cfgfile, char *weightfile, int *gpus,
         free_data(train);
         if(*net->seen/N > epoch){
             epoch = *net->seen/N;
-            if (prune_level > 0) {
+            // pruning condition
+            if (net->prune_rate > 0 && epoch >= net->prune_start && (epoch - net->prune_start) % net->prune_interval == 0) {
                 printf("Epoch %d: pruning network\n", epoch);
                 time=what_time_is_it_now();
-                prune_networks(nets, ngpus, prune_level);
+                prune_networks(nets, ngpus);
                 printf("Pruning done: %lf seconds\n", what_time_is_it_now() - time);
             }
             printf("Saving intermediate weights...\n");
@@ -165,10 +175,10 @@ void train_classifier(char *datacfg, char *cfgfile, char *weightfile, int *gpus,
     }
 
     // if pruning enabled, make sure the final weights are pruned too
-    if (prune_level > 0) {
+    if (net->prune_rate > 0) {
         printf("Training finished: pruning final network\n");
         time=what_time_is_it_now();
-        prune_networks(nets, ngpus, prune_level);
+        prune_networks(nets, ngpus);
         printf("Pruning done: %lf seconds\n", what_time_is_it_now() - time);
     }
 
@@ -1093,7 +1103,6 @@ void run_classifier(int argc, char **argv)
     int cam_index = find_int_arg(argc, argv, "-c", 0);
     int top = find_int_arg(argc, argv, "-t", 0);
     int clear = find_arg(argc, argv, "-clear");
-    float prune_level = find_float_arg(argc, argv, "-prune", 0.0);
     char *data = argv[3];
     char *cfg = argv[4];
     char *weights = (argc > 5) ? argv[5] : 0;
@@ -1103,7 +1112,7 @@ void run_classifier(int argc, char **argv)
     if(0==strcmp(argv[2], "predict")) predict_classifier(data, cfg, weights, filename, top);
     else if(0==strcmp(argv[2], "fout")) file_output_classifier(data, cfg, weights, filename);
     else if(0==strcmp(argv[2], "try")) try_classifier(data, cfg, weights, filename, atoi(layer_s));
-    else if(0==strcmp(argv[2], "train")) train_classifier(data, cfg, weights, gpus, ngpus, clear, prune_level);
+    else if(0==strcmp(argv[2], "train")) train_classifier(data, cfg, weights, gpus, ngpus, clear);
     else if(0==strcmp(argv[2], "demo")) demo_classifier(data, cfg, weights, cam_index, filename);
     else if(0==strcmp(argv[2], "gun")) gun_classifier(data, cfg, weights, cam_index, filename);
     else if(0==strcmp(argv[2], "threat")) threat_classifier(data, cfg, weights, cam_index, filename);

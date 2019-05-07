@@ -473,6 +473,10 @@ typedef struct network{
     float hue;
     int random;
 
+    float prune_rate;
+    int prune_interval;
+    int prune_start;
+
     int gpu_index;
     tree *hierarchy;
 
