@@ -702,6 +702,7 @@ void parse_net_options(list *options, network *net)
     if (net->prune_interval < 1) error("Prune interval must be >= 1");
     /* at which epoch pruning is applied for the first time */
     net->prune_start = option_find_int_quiet(options, "prune_start", 1);
+    net->prune_batchnorm = option_find_int_quiet(options, "prune_batchnorm", 0);
 
     if(!net->inputs && !(net->h && net->w && net->c)) error("No input parameters supplied");
 

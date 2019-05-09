@@ -59,6 +59,12 @@ void prune_network(network *net)
         // loop over prune_rate of filters
         for (j=0; j<num; ++j) {
             memset(&l.weights[filter_info[j].idx * num_weights_per_filter], 0, num_weights_per_filter * sizeof(float));
+
+            // optionally prune batchnorm parameters
+            if (net->prune_batchnorm && l.batch_normalize) {
+                l.scales[filter_info[j].idx] = 0;
+                l.biases[filter_info[j].idx] = 0;
+            }
         }
 
         free(filter_info);
