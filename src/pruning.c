@@ -29,7 +29,7 @@ void prune_network(network *net)
 
         // process only convolutional layers that are marked with the prune flag
         layer l = net->layers[i];
-        if (l.type != CONVOLUTIONAL || !l.prune)
+        if (l.type != CONVOLUTIONAL || l.prune == 0)
             continue;
 
         num_weights_per_filter = l.c*l.size*l.size;
@@ -53,9 +53,14 @@ void prune_network(network *net)
         // sort L2 norms in ascending manner
         qsort(filter_info, l.n, sizeof(struct FilterInfo), sfp_compare);
 
-        num = roundf(l.n * net->prune_rate);
-        if (num > l.n)
+	// num filters are going to be pruned
+        num = roundf(l.n * net->prune_rate * l.prune);
+
+        if (num > l.n) {
             num = l.n;
+        } else if (num < 0) {
+            num = 0;
+        }
 
         // force all weights in certain channels to zero based on sorted L2 norms and or do the same with
         // batchnorm scales and biases

@@ -201,7 +201,7 @@ convolutional_layer parse_convolutional(list *options, size_params params)
 
     convolutional_layer layer = make_convolutional_layer(batch,h,w,c,n,groups,size,stride,padding,activation, batch_normalize, binary, xnor, params.net->adam);
     layer.flipped = option_find_int_quiet(options, "flipped", 0);
-    layer.prune = option_find_int_quiet(options, "prune", 0);
+    layer.prune = option_find_float_quiet(options, "prune", 0);
     layer.dot = option_find_float_quiet(options, "dot", 0);
 
     return layer;

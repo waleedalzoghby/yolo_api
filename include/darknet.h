@@ -153,7 +153,7 @@ struct layer{
     int steps;
     int hidden;
     int truth;
-    int prune;
+    float prune;
     float smooth;
     float dot;
     float angle;
