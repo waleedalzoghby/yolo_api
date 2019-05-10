@@ -477,6 +477,7 @@ typedef struct network{
     int prune_interval;
     int prune_start;
     int prune_batchnorm;
+    int prune_conv;
 
     int gpu_index;
     tree *hierarchy;

@@ -701,7 +701,10 @@ void parse_net_options(list *options, network *net)
     net->prune_interval = option_find_int_quiet(options, "prune_interval", 1);
     if (net->prune_interval < 1) error("Prune interval must be >= 1");
     /* at which epoch pruning is applied for the first time */
-    net->prune_start = option_find_int_quiet(options, "prune_start", 1);
+    net->prune_start = option_find_int_quiet(options, "prune_start", 0);
+    /* prune convolutional weights */
+    net->prune_conv = option_find_int_quiet(options, "prune_conv", 1);
+    /* prune batchnorm scales and biases*/
     net->prune_batchnorm = option_find_int_quiet(options, "prune_batchnorm", 0);
 
     if(!net->inputs && !(net->h && net->w && net->c)) error("No input parameters supplied");

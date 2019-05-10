@@ -55,12 +55,15 @@ void prune_network(network *net)
         if (num > l.n)
             num = l.n;
 
-        // force all weights in certain channels to zero based on sorted L2 norms
+        // force all weights in certain channels to zero based on sorted L2 norms and or do the same with
+        // batchnorm scales and biases
         // loop over prune_rate of filters
         for (j=0; j<num; ++j) {
-            memset(&l.weights[filter_info[j].idx * num_weights_per_filter], 0, num_weights_per_filter * sizeof(float));
 
-            // optionally prune batchnorm parameters
+            if (net->prune_conv) {
+                memset(&l.weights[filter_info[j].idx * num_weights_per_filter], 0, num_weights_per_filter * sizeof(float));
+            }
+
             if (net->prune_batchnorm && l.batch_normalize) {
                 l.scales[filter_info[j].idx] = 0;
                 l.biases[filter_info[j].idx] = 0;
