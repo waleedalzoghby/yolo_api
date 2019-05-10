@@ -39,6 +39,8 @@ void prune_network(network *net)
         // fetch weights from GPU
         if (net->gpu_index >= 0) {
             cuda_pull_array(l.weights_gpu, l.weights, l.nweights);
+            cuda_pull_array(l.scales_gpu, l.scales, l.n);
+            cuda_pull_array(l.biases_gpu, l.biases, l.n);
         }
 #endif
         // compute L2 norm for each convolutional filter
@@ -76,6 +78,8 @@ void prune_network(network *net)
         // push modified weights to GPU
         if (net->gpu_index >= 0) {
             cuda_push_array(l.weights_gpu, l.weights, l.nweights);
+            cuda_push_array(l.scales_gpu, l.scales, l.n);
+            cuda_push_array(l.biases_gpu, l.biases, l.n);
         }
 #endif
     }
