@@ -1,0 +1,7 @@
+correct!! tiny yolo original
+./examples/darknet_cpp_detection ../../data/coco.names ../../cfg/yolov3-tiny.cfg ../../yolov3-tiny.weights
+
+correct!! tiny yolo cone
+./examples/darknet_cpp_detection ../../data/cone.names ../../cfg/tiny_608.cfg ../../tiny_608_10000.weights
+
+

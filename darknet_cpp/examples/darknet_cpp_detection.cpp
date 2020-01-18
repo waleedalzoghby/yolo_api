@@ -38,7 +38,7 @@ int main(int argc, char *argv[])
             std::cerr << "Could not open video file" << std::endl;
             return 1;
         }
-    } else if (!cap.open(0)) {
+    } else if (!cap.open(1)) {
         std::cerr << "Could not open video input stream" << std::endl;
         return 1;
     }
@@ -48,7 +48,10 @@ int main(int argc, char *argv[])
         std::cerr << "Failed to read names file" << std::endl;
         return 1;
     }
-
+	for(unsigned int i =0; i<label_names.size(); i++)
+	{
+		std::cout<<label_names[i]<<std::endl;
+	}
     // setup detector
     if (!detector.setup(input_cfg_file,
                         input_weights_file,
@@ -62,20 +65,20 @@ int main(int argc, char *argv[])
     // setup preprocessor
     pre.setup(detector.get_width(), detector.get_height());
     auto prevTime = std::chrono::system_clock::now();
-
+	cv::namedWindow("Overlay", cv::WINDOW_NORMAL);
     while(1) {
 
         if (!cap.read(image)) {
             std::cerr << "Video capture read failed/EoF" << std::endl;
             return 1;
         }
-
+	cv::imwrite("input.jpg", image);
         // preprocess image
         if (!pre.run(image, blob)) {
             std::cerr << "Failed to preprocess image" << std::endl;
             return 1;
         }
-
+	cv::imwrite("input_preprocessed.jpg", image);
         // run detector
         if (!detector.predict(blob)) {
             std::cerr << "Failed to run detector" << std::endl;
@@ -88,9 +91,14 @@ int main(int argc, char *argv[])
             return 1;
         }
         detections = detector.get_detections();
-
+//	for(int i =0; i<detections.size(); i++)
+//	{
+//	std::cout<<"x: "<<to_string(detections[i].x)<<"y: "<<std::cout<<to_string(detections[i].y)<<"w: //"<<to_string(detections[i].width)<<"h: "<<std::cout<<to_string(detections[i].height)<<"prop: "<<to_string(detections[i].width)<<"label: "<<std::cout<<to_string(detections[i].height)<<std::endl;
+//	}
         // draw bounding boxes
+	
         Darknet::image_overlay(detections, image, label_names);
+	cv::imwrite("overlay.jpg", image);
 
         auto now = std::chrono::system_clock::now();
         std::chrono::duration<double> period = (now - prevTime);
@@ -98,6 +106,7 @@ int main(int argc, char *argv[])
         std::cout << "FPS: " << 1 / period.count() << std::endl;
 
         cv::imshow("Overlay", image);
+	//make_window("predictions", 512, 512, 0);
         cv::waitKey(1);
 
     }
