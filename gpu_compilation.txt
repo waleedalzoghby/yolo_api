@@ -1,0 +1,4 @@
+to compile with GPU
+
+darknet_cpp/CMakeLists.txt --> WITH_GPU, WITH CUDNN set to true
+
